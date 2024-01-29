@@ -24,6 +24,5 @@ import { User } from 'src/user/entities/user.entity';
       },
     }),
   ],
-  exports: [DbModule],
 })
 export class DbModule {}

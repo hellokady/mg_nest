@@ -1,6 +1,19 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
-import { FindManyOptions, Like, Repository } from 'typeorm';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import {
+  FindManyOptions,
+  FindOptionsWhere,
+  In,
+  Like,
+  Repository,
+} from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { JwtService } from '@nestjs/jwt';
 
 import { User } from 'src/user/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
@@ -16,8 +29,10 @@ export class UserService {
   @InjectRepository(Role)
   private roleRepository: Repository<Role>;
 
+  @Inject(JwtService)
+  private jwtService: JwtService;
+
   private logger = new Logger();
-  private loginedUsers = new Map<number, User>();
 
   async register(user: RegisterDto) {
     const foundUser = await this.userRepository.findOneBy({
@@ -32,8 +47,8 @@ export class UserService {
     newUser.username = user.username;
     newUser.password = user.password;
     const normalRole = await this.roleRepository.findOneBy({
-      name: '普通用户'
-    })
+      name: '普通用户',
+    });
     newUser.roles = [normalRole];
 
     try {
@@ -50,31 +65,54 @@ export class UserService {
       where: {
         username: user.username,
       },
-      select: ['id', 'password'],
+      relations: {
+        roles: true,
+      },
+      select: {
+        id: true,
+        password: true,
+        roles: {
+          id: true,
+        },
+      },
     });
 
     if (!foundUser) {
-      throw new HttpException('该用户不存在', 200);
+      throw new HttpException('该用户不存在', HttpStatus.ACCEPTED);
     }
 
     if (foundUser.password !== user.password) {
-      throw new HttpException('密码错误', 200);
+      throw new HttpException('密码错误', HttpStatus.ACCEPTED);
     }
 
-    this.loginedUsers.set(foundUser.id, foundUser);
-    return {
-      message: '登录成功',
-      id: foundUser.id,
-    };
+    const token = this.jwtService.sign({
+      user: {
+        id: foundUser.id,
+        roles: foundUser.roles,
+      },
+    });
+
+    return token;
   }
 
   async findAll(queryDto: QueryDto) {
-    const { page = 1, pageSize = 20, username } = queryDto;
+    const { page = 1, pageSize = 20, username, roles } = queryDto;
+
+    const where: FindOptionsWhere<User> = {};
+    if (username) {
+      where.username = Like(`%${username}%`);
+    }
+    if (roles) {
+      const formatRoles: number[] = JSON.parse(roles);
+      if (Array.isArray(formatRoles) && formatRoles.length > 0) {
+        where.roles = {
+          id: In(formatRoles),
+        };
+      }
+    }
 
     const query: FindManyOptions<User> = {
-      where: {
-        username: username ? Like(`%${username}%`) : null,
-      },
+      where,
       relations: {
         roles: true,
       },
@@ -89,8 +127,8 @@ export class UserService {
       skip: (+page - 1) * +pageSize,
       take: +pageSize,
     };
-    const users = await this.userRepository.find(query);
-    const total = await this.userRepository.count(query);
+    const [users, total] = await this.userRepository.findAndCount(query);
+
     return {
       page: +page,
       pageSize: +pageSize,
@@ -107,11 +145,7 @@ export class UserService {
   }
 
   async update(id: number, updateUserDto: LoginDto) {
-    if (!this.loginedUsers.has(id)) {
-      throw new HttpException('请登录后再进行操作', 200);
-    }
     await this.userRepository.update(id, updateUserDto);
-    this.loginedUsers.delete(id);
     return '更新成功';
   }
 
@@ -132,13 +166,7 @@ export class UserService {
   }
 
   async remove(id: number) {
-    console.log(this.loginedUsers, id);
-
-    if (!this.loginedUsers.has(id)) {
-      throw new HttpException('请登录后再进行操作', 200);
-    }
     await this.userRepository.softDelete(id);
-    this.loginedUsers.delete(id);
     return '删除成功';
   }
 }

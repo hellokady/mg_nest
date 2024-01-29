@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Permission } from 'src/permission/entities/permission.entity';
-import { Repository, FindOptionsRelations } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
+import { Permission } from 'src/permission/entities/permission.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
@@ -21,14 +21,31 @@ export class RoleService {
   findAll() {
     const roles = this.roleRepository.find({
       relations: {
-        permissions: true
+        permissions: true,
       },
       select: {
         permissions: {
           id: true,
-          name: true
-        }
-      }
+          name: true,
+        },
+      },
+    });
+    return roles;
+  }
+
+  async findRoleByIds(ids: number[]) {
+    const roles = await this.roleRepository.find({
+      where: {
+        id: In(ids),
+      },
+      relations: {
+        permissions: true,
+      },
+      select: {
+        permissions: {
+          name: true,
+        },
+      },
     });
     return roles;
   }

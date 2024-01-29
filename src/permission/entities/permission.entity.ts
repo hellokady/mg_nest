@@ -14,6 +14,7 @@ export class Permission {
   @Column({
     length: 40,
     comment: '权限名称',
+    unique: true,
   })
   name: string;
 

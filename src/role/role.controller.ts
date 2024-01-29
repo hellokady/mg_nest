@@ -1,17 +1,23 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { RequireLogin, RequirePermission } from 'src/common/decorators/custom.decorator';
 
 @Controller('role')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
+  @RequireLogin()
+  @RequirePermission([])
   @Post()
   create(@Body() createRoleDto: CreateRoleDto) {
     return this.roleService.create(createRoleDto);
   }
 
+  @RequireLogin()
+  @RequirePermission(['普通用户-读取权限'])
   @Get()
   findAll() {
     return this.roleService.findAll();

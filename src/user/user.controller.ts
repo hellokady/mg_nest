@@ -8,6 +8,8 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
+
+import { RequireLogin } from 'src/common/decorators/custom.decorator';
 import { UserService } from './user.service';
 import { LoginDto } from './dto/login-dto';
 import { RegisterDto } from './dto/register.dto';
@@ -27,6 +29,7 @@ export class UserController {
     return this.userService.register(user);
   }
 
+  @RequireLogin()
   @Get()
   findAll(@Query() query: QueryDto) {
     return this.userService.findAll(query);

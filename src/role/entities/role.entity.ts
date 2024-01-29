@@ -9,7 +9,8 @@ export class Role {
 
   @Column({
     length: 40,
-    comment: '角色名称'
+    comment: '角色名称',
+    unique: true
   })
   name: string;
 

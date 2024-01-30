@@ -10,10 +10,17 @@ import { PermissionModule } from './permission/permission.module';
 import { JwtModule } from './jwt/jwt.module';
 import { LoginGuard } from './common/guards/login.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
-import { RoleService } from './role/role.service';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
-  imports: [DbModule, UserModule, RoleModule, PermissionModule, JwtModule],
+  imports: [
+    DbModule,
+    UserModule,
+    RoleModule,
+    PermissionModule,
+    JwtModule,
+    RedisModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
@@ -23,8 +30,8 @@ import { RoleService } from './role/role.service';
     },
     {
       provide: APP_GUARD,
-      useClass: PermissionGuard
-    }
+      useClass: PermissionGuard,
+    },
   ],
 })
 export class AppModule {}

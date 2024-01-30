@@ -4,6 +4,8 @@ import {
   Inject,
   Injectable,
   Logger,
+  Optional,
+  Provider,
 } from '@nestjs/common';
 import {
   FindManyOptions,
@@ -15,6 +17,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 
+import { RedisService } from 'src/redis/redis.service';
 import { User } from 'src/user/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login-dto';
@@ -31,6 +34,12 @@ export class UserService {
 
   @Inject(JwtService)
   private jwtService: JwtService;
+
+  @Inject(RedisService)
+  private redisService: RedisService;
+
+  @Inject('REDIS_MODULE')
+  module: string;
 
   private logger = new Logger();
 
@@ -70,6 +79,7 @@ export class UserService {
       },
       select: {
         id: true,
+        username: true,
         password: true,
         roles: {
           id: true,
@@ -88,9 +98,12 @@ export class UserService {
     const token = this.jwtService.sign({
       user: {
         id: foundUser.id,
+        username: foundUser.username,
         roles: foundUser.roles,
       },
     });
+
+    await this.redisService.set(foundUser.username, token);
 
     return token;
   }
@@ -113,9 +126,7 @@ export class UserService {
 
     const query: FindManyOptions<User> = {
       where,
-      relations: {
-        roles: true,
-      },
+      relations: ['roles'],
       select: {
         roles: {
           name: true,
